@@ -240,6 +240,20 @@ document.addEventListener('DOMContentLoaded', function () {
     vidObserver.observe(heroVid);
   }
 
+  /* ===== HERO BACKGROUND VIDEO LAZY PLAY ===== */
+  const heroBgVid = document.getElementById('heroBgVid');
+  if (heroBgVid) {
+    const bgVidObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          heroBgVid.play().catch(function () {});
+          bgVidObserver.unobserve(heroBgVid);
+        }
+      });
+    }, { threshold: 0.1 });
+    bgVidObserver.observe(heroBgVid);
+  }
+
   /* ===== SMOOTH SCROLL for anchor links ===== */
   document.querySelectorAll('a[href^="#"]').forEach(function (a) {
     a.addEventListener('click', function (e) {

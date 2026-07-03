@@ -464,6 +464,25 @@ p { color: var(--text-secondary); transition: color 0.4s ease; }
   opacity: 1;
 }
 
+.hero-video-bg {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.hero-bg-vid {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.14;
+}
+[data-theme="dark"] .hero-bg-vid { opacity: 0.2; }
+@media (max-width: 900px) {
+  .hero-video-bg { display: block; }
+}
+
 .hero-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1356,6 +1375,22 @@ p { color: var(--text-secondary); transition: color 0.4s ease; }
   .hero-grid { grid-template-columns: 1fr; }
   .hero-visual { display: none; }
   .hero-desc { max-width: 100%; }
+
+  /* Legibility over the background video */
+  .hero-overline, .hero h1, .hero-desc {
+    text-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  [data-theme="dark"] .hero-overline,
+  [data-theme="dark"] .hero h1,
+  [data-theme="dark"] .hero-desc {
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
+  .hero-overline, .hero-arrow-btn {
+    box-shadow: var(--shadow-sm);
+  }
+  .hero-actions .btn-whatsapp {
+    box-shadow: var(--shadow-md), 0 4px 16px rgba(37,211,102,0.35);
+  }
 
   /* Sections */
   .section { padding: 3.5rem 0; }
