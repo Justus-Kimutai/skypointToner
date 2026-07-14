@@ -130,21 +130,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }, duration / steps);
   }
 
-  /* ===== PRODUCT FILTER (homepage tabs) ===== */
-  const filterTabs = document.querySelectorAll('.filter-tab');
-  const productCards = document.querySelectorAll('[data-category]');
-
-  filterTabs.forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      filterTabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const cat = tab.getAttribute('data-filter');
-      filterProducts(cat);
-    });
-  });
+  /* ===== PRODUCT FILTER (homepage tabs + products page sidebar/tabs) ===== */
+  // Everything below is queried live / delegated (not cached) so cards and
+  // category buttons injected later by js/products.js still work.
+  function getProductCards() {
+    return document.querySelectorAll('[data-category]');
+  }
 
   function filterProducts(cat) {
-    productCards.forEach(function (card) {
+    getProductCards().forEach(function (card) {
       const cardCat = card.getAttribute('data-category');
       const show = cat === 'all' || cardCat === cat;
       card.style.display = show ? '' : 'none';
@@ -157,16 +151,21 @@ document.addEventListener('DOMContentLoaded', function () {
     updateCount();
   }
 
-  /* ===== SIDEBAR FILTER (products page) ===== */
-  const sidebarBtns = document.querySelectorAll('.sidebar-btn');
-  sidebarBtns.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      sidebarBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const cat = btn.getAttribute('data-filter');
-      filterProducts(cat);
-      filterTabs.forEach(t => t.classList.toggle('active', t.getAttribute('data-filter') === cat));
+  function setActiveFilter(cat) {
+    document.querySelectorAll('.filter-tab').forEach(function (t) {
+      t.classList.toggle('active', t.getAttribute('data-filter') === cat);
     });
+    document.querySelectorAll('.sidebar-btn').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-filter') === cat);
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.filter-tab, .sidebar-btn');
+    if (!btn) return;
+    const cat = btn.getAttribute('data-filter');
+    setActiveFilter(cat);
+    filterProducts(cat);
   });
 
   /* ===== PRODUCT SEARCH ===== */
@@ -174,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (searchInput) {
     searchInput.addEventListener('input', function () {
       const q = this.value.toLowerCase().trim();
-      productCards.forEach(function (card) {
+      getProductCards().forEach(function (card) {
         const text = card.textContent.toLowerCase();
         card.style.display = (!q || text.includes(q)) ? '' : 'none';
       });
@@ -202,11 +201,12 @@ document.addEventListener('DOMContentLoaded', function () {
     window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(msg), '_blank');
   }
 
-  document.querySelectorAll('[data-wa-product]').forEach(function (el) {
-    el.addEventListener('click', function (e) {
-      e.preventDefault();
-      orderWhatsApp(this.getAttribute('data-wa-product'), this.getAttribute('data-wa-price') || '');
-    });
+  // Delegated on document (not queried once) so buttons injected later by js/products.js still work.
+  document.addEventListener('click', function (e) {
+    const el = e.target.closest('[data-wa-product]');
+    if (!el) return;
+    e.preventDefault();
+    orderWhatsApp(el.getAttribute('data-wa-product'), el.getAttribute('data-wa-price') || '');
   });
 
   document.querySelectorAll('[data-wa-general]').forEach(function (el) {
