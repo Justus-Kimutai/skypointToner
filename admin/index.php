@@ -36,6 +36,7 @@ $flashMessages = [
       </div>
       <div class="topbar-actions">
         <span class="who">Signed in as <strong><?= e($_SESSION['admin_username']) ?></strong></span>
+        <a href="categories.php" class="btn btn-secondary btn-sm">Categories</a>
         <a href="account.php" class="btn btn-secondary btn-sm">Account</a>
         <a href="../products.html" target="_blank" class="btn btn-secondary btn-sm">View Live Page</a>
         <a href="logout.php" class="btn btn-secondary btn-sm">Log Out</a>

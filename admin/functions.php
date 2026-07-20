@@ -6,11 +6,12 @@ define('PRODUCT_IMAGES_URL', 'images/products/');
 define('PRODUCT_IMAGE_MAX_BYTES', 4 * 1024 * 1024);
 
 $GLOBALS['DEFAULT_CATEGORIES'] = [
-    'toner'   => 'Toner Cartridges',
-    'copier'  => 'Photocopiers',
-    'printer' => 'All-in-One Printers',
-    'laptop'  => 'Laptops & Desktops',
-    'other'   => 'Other',
+    'toner'      => 'Toner Cartridges',
+    'copier'     => 'Photocopiers',
+    'printer'    => 'All-in-One Printers',
+    '3d-printer' => '3D Printers',
+    'laptop'     => 'Laptops & Desktops',
+    'other'      => 'Other',
 ];
 
 function load_data() {
