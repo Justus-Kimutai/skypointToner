@@ -221,3 +221,44 @@ td .muted { color: var(--text-muted); font-size: 0.8rem; }
   .products-table .row-actions > * { flex: 1; }
   .products-table .row-actions .btn { width: 100%; justify-content: center; }
 }
+
+/* Product photo previews on the edit page */
+.photo-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.6rem; }
+.photo-row:empty { display: none; }
+.photo-box { margin: 0; width: 200px; max-width: 100%; }
+.photo-box[hidden] { display: none; }
+.photo-box img {
+  display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain;
+  background: #fff; border: 1px solid var(--border); border-radius: 8px;
+}
+.photo-box figcaption { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
+.photo-box--new img { border: 2px solid #E8A000; }
+.photo-box--new figcaption { color: #b37b00; font-weight: 600; }
+.photo-box.is-replaced img { opacity: 0.45; }
+.photo-box.is-replaced figcaption::after { content: " (will be replaced)"; }
+
+/* Red x to remove the current photo */
+.photo-box { position: relative; }
+.photo-remove {
+  position: absolute; top: 6px; right: 6px; z-index: 1;
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff;
+  background: #dc2626; color: #fff; font-size: 18px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.25); padding: 0;
+}
+.photo-remove:hover, .photo-remove:focus-visible { background: #b91c1c; outline: none; }
+
+/* Confirmation dialog */
+.confirm-backdrop {
+  position: fixed; inset: 0; z-index: 10001;
+  background: rgba(10,12,18,0.55);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.confirm-backdrop[hidden] { display: none; }
+.confirm-dialog {
+  background: var(--card, #fff); border-radius: 12px; padding: 1.5rem;
+  width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.confirm-dialog h2 { font-size: 1.1rem; margin: 0 0 0.5rem; }
+.confirm-dialog p { font-size: 0.9rem; color: var(--text-muted); margin: 0 0 1.25rem; }
+.confirm-actions { display: flex; gap: 0.6rem; justify-content: flex-end; flex-wrap: wrap; }

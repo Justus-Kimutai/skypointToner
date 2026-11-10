@@ -64,14 +64,18 @@ function save_product_image($id, array $file, $oldImage = '') {
     // Shrink on the server too, in case the browser didn't (old browser,
     // direct upload). Falls back to storing the original if GD is missing
     // or the image can't be processed.
+    // Unique name per upload ({id}-{timestamp}.ext): images are cached by
+    // browsers for 7 days, so reusing "{id}.jpg" would keep showing the old
+    // photo after a replacement. The previous file is deleted below.
+    $base = $id . '-' . time();
     $shrunk = shrink_product_image($file['tmp_name'], $mime, (int)$info[0], (int)$info[1], (int)$file['size']);
     if ($shrunk !== null) {
-        $filename = $id . '.jpg';
+        $filename = $base . '.jpg';
         if (file_put_contents(PRODUCT_IMAGES_DIR . $filename, $shrunk) === false) {
             return ['ok' => false, 'error' => 'Could not save the uploaded photo.'];
         }
     } else {
-        $filename = $id . '.' . $ext;
+        $filename = $base . '.' . $ext;
         if (!move_uploaded_file($file['tmp_name'], PRODUCT_IMAGES_DIR . $filename)) {
             return ['ok' => false, 'error' => 'Could not save the uploaded photo.'];
         }
@@ -113,6 +117,8 @@ function shrink_product_image($path, $mime, $w, $h, $bytes) {
 
 function delete_product_image_file($imagePath) {
     if ($imagePath === '' || $imagePath === null) return;
+    // Only ever delete files directly inside images/products/.
+    if (!preg_match('#^images/products/[A-Za-z0-9._-]+$#', $imagePath) || strpos($imagePath, '..') !== false) return;
     $full = __DIR__ . '/../' . $imagePath;
     if (is_file($full)) {
         unlink($full);

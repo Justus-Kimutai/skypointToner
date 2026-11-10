@@ -65,7 +65,7 @@ $labelInput = ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '')
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Categories — Skypoint Admin</title>
-<link rel="stylesheet" href="style.css?v=20261110">
+<link rel="stylesheet" href="style.css?v=20261110b">
 </head>
 <body>
   <div class="wrap" style="max-width:760px;">

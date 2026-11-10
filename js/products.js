@@ -40,7 +40,7 @@
       ? '<div class="product-badges"><span class="badge badge-accent">' + esc(p.badge) + '</span></div>'
       : '';
     const photo = p.image
-      ? '<img class="product-photo" src="' + esc(p.image) + '" alt="' + esc(p.name) + '" loading="lazy">'
+      ? '<img class="product-photo" src="' + esc(p.image) + '" alt="' + esc(p.name) + '" loading="lazy" data-lightbox data-caption="' + esc(p.name) + '" tabindex="0" title="Click to enlarge">'
       : '<div class="product-image-inner"><i class="fas fa-box"></i></div>';
     return (
       '<div class="product-card" data-category="' + esc(p.category) + '">' +

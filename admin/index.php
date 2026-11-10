@@ -22,7 +22,7 @@ $flashMessages = [
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Products — Skypoint Admin</title>
-<link rel="stylesheet" href="style.css?v=20261110">
+<link rel="stylesheet" href="style.css?v=20261110b">
 </head>
 <body>
   <div class="wrap">
@@ -73,7 +73,7 @@ $flashMessages = [
           <tr>
             <td class="c-img">
               <?php if (!empty($p['image'])): ?>
-                <img src="../<?= e($p['image']) ?>" alt="" style="width:48px; height:36px; object-fit:cover; border-radius:4px; border:1px solid var(--border);">
+                <img src="../<?= e($p['image']) ?>" alt="<?= e($p['name']) ?>" data-lightbox data-caption="<?= e($p['name']) ?>" tabindex="0" title="Click to enlarge" style="width:48px; height:36px; object-fit:cover; border-radius:4px; border:1px solid var(--border);">
               <?php else: ?>
                 <div style="width:48px; height:36px; border-radius:4px; background:var(--bg); border:1px solid var(--border);"></div>
               <?php endif; ?>
@@ -113,5 +113,6 @@ $flashMessages = [
 
     <p class="footer-note">Changes here update <code>products.json</code> and appear on the live Products page immediately.</p>
   </div>
+<script src="../js/lightbox.js?v=20261110b"></script>
 </body>
 </html>

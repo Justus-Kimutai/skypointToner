@@ -38,7 +38,7 @@ if (post_too_large()) {
         'categoryLabel' => trim($_POST['categoryLabel'] ?? ''),
         'name'          => trim($_POST['name'] ?? ''),
         'specs'         => trim($_POST['specs'] ?? ''),
-        'image'         => trim($_POST['currentImage'] ?? ''),
+        'image'         => $existing['image'] ?? '',
         'badge'         => trim($_POST['badge'] ?? ''),
         'priceType'     => $_POST['priceType'] ?? 'quote',
         'price'         => trim($_POST['price'] ?? ''),
@@ -124,7 +124,7 @@ if (post_too_large()) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= $isEdit ? 'Edit Product' : 'Add Product' ?> — Skypoint Admin</title>
-<link rel="stylesheet" href="style.css?v=20261110">
+<link rel="stylesheet" href="style.css?v=20261110b">
 </head>
 <body>
   <div class="wrap" style="max-width:760px;">
@@ -179,17 +179,22 @@ if (post_too_large()) {
 
           <div class="full">
             <label for="image">Product Photo</label>
-            <?php if (!empty($input['image'])): ?>
-              <div style="margin-bottom:0.5rem;">
-                <img src="../<?= e($input['image']) ?>" alt="" style="width:120px; height:90px; object-fit:cover; border-radius:8px; border:1px solid var(--border);">
-              </div>
-              <label style="display:inline-flex; align-items:center; gap:0.4rem; font-weight:400;">
-                <input type="checkbox" name="removeImage" value="1" style="width:auto;"> Remove current photo
-              </label>
-            <?php endif; ?>
+            <div class="photo-row">
+              <?php if (!empty($input['image'])): ?>
+              <figure class="photo-box" id="currentPhotoBox">
+                <button type="button" class="photo-remove" id="removePhotoBtn" title="Remove this photo" aria-label="Remove current photo">&times;</button>
+                <img src="../<?= e($input['image']) ?>" alt="<?= e($input['name']) ?>" data-lightbox data-caption="Current photo" data-lightbox-remove="removePhotoBtn" tabindex="0" title="Click to enlarge">
+                <figcaption>Current photo &middot; click to enlarge</figcaption>
+              </figure>
+              <?php endif; ?>
+              <figure class="photo-box photo-box--new" id="newPhotoBox" hidden>
+                <img id="imagePreview" alt="New photo preview" data-lightbox data-caption="New photo (not saved yet)" tabindex="0" title="Click to enlarge">
+                <figcaption>New photo &middot; not saved yet</figcaption>
+              </figure>
+            </div>
+            <input type="hidden" name="removeImage" id="removeImage" value="">
             <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
             <div class="hint" id="imageHint">JPG, PNG, or WEBP, max 15MB. Large phone photos are shrunk automatically before upload. Uploading a new photo replaces the current one.</div>
-            <img id="imagePreview" alt="" style="display:none; margin-top:0.5rem; width:160px; height:120px; object-fit:contain; border-radius:8px; border:1px solid var(--border); background:#fff;">
           </div>
 
           <div>
@@ -225,6 +230,17 @@ if (post_too_large()) {
           </div>
         </div>
 
+        <div class="confirm-backdrop" id="removeConfirm" hidden>
+          <div class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="removeConfirmTitle" aria-describedby="removeConfirmText">
+            <h2 id="removeConfirmTitle">Remove this photo?</h2>
+            <p id="removeConfirmText">The photo will be deleted from the website straight away. Your other changes on this page will be saved too. This cannot be undone.</p>
+            <div class="confirm-actions">
+              <button type="button" class="btn btn-secondary" id="removeCancel">Cancel</button>
+              <button type="button" class="btn btn-danger" id="removeOk">Yes, remove photo</button>
+            </div>
+          </div>
+        </div>
+
         <button type="submit" class="btn" style="margin-top:1.5rem;"><?= $isEdit ? 'Save Changes' : 'Add Product' ?></button>
         <a href="index.php" class="btn btn-secondary" style="margin-top:1.5rem;">Cancel</a>
       </form>
@@ -257,6 +273,31 @@ if (post_too_large()) {
         }
       });
 
+      // Remove current photo: red x on the photo (or in the enlarged view)
+      // opens a confirmation dialog; confirming saves with the photo removed.
+      var removePhotoBtn = document.getElementById('removePhotoBtn');
+      var removeConfirm = document.getElementById('removeConfirm');
+      if (removePhotoBtn && removeConfirm) {
+        var removeOk = document.getElementById('removeOk');
+        var removeCancel = document.getElementById('removeCancel');
+        var closeConfirm = function () { removeConfirm.hidden = true; removePhotoBtn.focus(); };
+        removePhotoBtn.addEventListener('click', function () {
+          removeConfirm.hidden = false;
+          removeCancel.focus();
+        });
+        removeCancel.addEventListener('click', closeConfirm);
+        removeConfirm.addEventListener('click', function (e) { if (e.target === removeConfirm) closeConfirm(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !removeConfirm.hidden) closeConfirm(); });
+        removeOk.addEventListener('click', function () {
+          document.getElementById('removeImage').value = '1';
+          var fi = document.getElementById('image');
+          if (fi) fi.value = '';
+          removeOk.disabled = true;
+          removeOk.textContent = 'Removing...';
+          document.getElementById('productForm').submit();
+        });
+      }
+
       // Shrink photos in the browser before upload. Phone photos are often
       // 3-10MB; resized to max 1600px JPEG they come out ~150-400KB, upload
       // fast on mobile data, and load fast on the storefront.
@@ -265,6 +306,13 @@ if (post_too_large()) {
       var fileInput = document.getElementById('image');
       var hint = document.getElementById('imageHint');
       var preview = document.getElementById('imagePreview');
+      var newBox = document.getElementById('newPhotoBox');
+      var currentBox = document.getElementById('currentPhotoBox');
+      function showPreview(src) {
+        if (src) { preview.src = src; newBox.hidden = false; }
+        else { preview.removeAttribute('src'); newBox.hidden = true; }
+        if (currentBox) currentBox.classList.toggle('is-replaced', !!src);
+      }
       var submitBtn = document.querySelector('#productForm button[type="submit"]');
       var originalHint = hint.textContent;
 
@@ -272,7 +320,7 @@ if (post_too_large()) {
       function setHint(text, isError) { hint.textContent = text; hint.style.color = isError ? '#c0392b' : ''; }
       function rejectTooLarge(bytes) {
         fileInput.value = '';
-        preview.style.display = 'none';
+        showPreview(null);
         submitBtn.disabled = false;
         setHint('Photo is too large (' + size(bytes) + '). Maximum is ' + size(MAX_BYTES) + '. Please choose a smaller photo.', true);
       }
@@ -289,7 +337,7 @@ if (post_too_large()) {
 
       fileInput.addEventListener('change', function () {
         var file = fileInput.files && fileInput.files[0];
-        preview.style.display = 'none';
+        showPreview(null);
         setHint(originalHint);
         if (!file) return;
 
@@ -304,7 +352,7 @@ if (post_too_large()) {
           var small = scale === 1 && file.size <= 1048576 && /^image\/(jpeg|png|webp)$/.test(file.type);
           if (small || typeof DataTransfer === 'undefined') {
             if (file.size > MAX_BYTES) { URL.revokeObjectURL(url); rejectTooLarge(file.size); return; }
-            preview.src = url; preview.style.display = 'block';
+            showPreview(url);
             setHint('Ready: ' + file.name + ' (' + size(file.size) + '). Click "' + submitBtn.textContent + '" to save.');
             submitBtn.disabled = false;
             return;
@@ -326,7 +374,7 @@ if (post_too_large()) {
             var dt = new DataTransfer();
             dt.items.add(resized);
             fileInput.files = dt.files;
-            preview.src = URL.createObjectURL(resized); preview.style.display = 'block';
+            showPreview(URL.createObjectURL(resized));
             setHint('Ready: photo shrunk from ' + size(file.size) + ' to ' + size(resized.size) + '. Click "' + submitBtn.textContent + '" to save.');
           }, 'image/jpeg', 0.85);
         };
@@ -340,5 +388,6 @@ if (post_too_large()) {
       });
     })();
   </script>
+<script src="../js/lightbox.js?v=20261110b"></script>
 </body>
 </html>
