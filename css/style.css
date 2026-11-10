@@ -1571,6 +1571,46 @@ p { color: var(--text-secondary); transition: color 0.4s ease; }
   .value-card { padding: 1.5rem 1rem; }
 }
 
+/* ---- Overflow guards (all widths) ----
+   Grid/flex children default to min-width:auto, so a wide child (the
+   horizontally-scrolling filter tabs, the map iframe, long emails) would
+   stretch the whole column past the screen edge on phones. */
+.products-page-layout > *,
+.contact-grid > *,
+.contact-info-wrap > *,
+.hero-grid > * { min-width: 0; }
+.cic-body p, .cic-body a { overflow-wrap: anywhere; }
+
+/* Products page grid sits beside the sidebar, so 3 columns on desktop
+   (the ≤1100 / ≤900 / ≤480 rules above take over on smaller screens). */
+@media (min-width: 1101px) {
+  .products-grid--page { grid-template-columns: repeat(3, 1fr); }
+}
+.products-grid > * { min-width: 0; }
+
+/* Tablets 769–900px: desktop nav links + WhatsApp button don't fit */
+@media (max-width: 900px) {
+  .nav-actions .btn-whatsapp { display: none; }
+}
+
+/* ---- Products page on phones: products first ---- */
+@media (max-width: 768px) {
+  .products-sidebar { order: 2; }
+  /* Category list duplicates the filter tabs above the grid */
+  .products-sidebar .sidebar-block:first-child { display: none; }
+}
+
+/* ---- Very small phones (≤400px): fit logo + menu button ---- */
+@media (max-width: 400px) {
+  .nav { gap: 0.5rem; }
+  .logo { gap: 0.55rem; }
+  .logo-text { padding-left: 0.55rem; }
+  .logo-tagline { letter-spacing: 0.1em; font-size: 0.5rem; }
+  .nav-actions { gap: 0.4rem; }
+  .theme-toggle { width: 34px; height: 34px; }
+  .btn-lg { padding: 0.85rem 1.25rem; font-size: 0.95rem; max-width: 100%; white-space: normal; text-align: center; justify-content: center; }
+}
+
 /* ============================================================
    HERO VISUAL — Photo Mosaic (reference-style layout)
    ============================================================ */

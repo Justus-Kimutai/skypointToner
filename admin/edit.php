@@ -124,7 +124,7 @@ if (post_too_large()) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= $isEdit ? 'Edit Product' : 'Add Product' ?> — Skypoint Admin</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20261110">
 </head>
 <body>
   <div class="wrap" style="max-width:760px;">

@@ -22,7 +22,7 @@ $flashMessages = [
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Products — Skypoint Admin</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20261110">
 </head>
 <body>
   <div class="wrap">
@@ -57,7 +57,7 @@ $flashMessages = [
         <div class="empty-state">No products yet. Click "Add Product" to create the first one.</div>
       <?php else: ?>
       <div style="overflow-x:auto;">
-      <table>
+      <table class="products-table">
         <thead>
           <tr>
             <th></th>
@@ -71,19 +71,19 @@ $flashMessages = [
         <tbody>
           <?php foreach ($products as $p): ?>
           <tr>
-            <td>
+            <td class="c-img">
               <?php if (!empty($p['image'])): ?>
                 <img src="../<?= e($p['image']) ?>" alt="" style="width:48px; height:36px; object-fit:cover; border-radius:4px; border:1px solid var(--border);">
               <?php else: ?>
                 <div style="width:48px; height:36px; border-radius:4px; background:var(--bg); border:1px solid var(--border);"></div>
               <?php endif; ?>
             </td>
-            <td><span class="tag"><?= e($categories[$p['category']] ?? $p['category']) ?></span></td>
-            <td>
+            <td class="c-cat"><span class="tag"><?= e($categories[$p['category']] ?? $p['category']) ?></span></td>
+            <td class="c-name">
               <strong><?= e($p['name']) ?></strong><br>
               <span class="muted"><?= e(truncate_str($p['specs'] ?? '', 80)) ?></span>
             </td>
-            <td>
+            <td class="c-price" data-label="Price">
               <?php if (($p['priceType'] ?? 'quote') === 'fixed'): ?>
                 KSh <?= e($p['price']) ?>
               <?php elseif (($p['priceType'] ?? '') === 'from'): ?>
@@ -92,8 +92,8 @@ $flashMessages = [
                 <span class="muted"><?= e($p['quoteLabel'] ?? 'Get Quote') ?></span>
               <?php endif; ?>
             </td>
-            <td><?= $p['badge'] ? e($p['badge']) : '<span class="muted">—</span>' ?></td>
-            <td>
+            <td class="c-badge" data-label="Badge"><?= $p['badge'] ? e($p['badge']) : '<span class="muted">—</span>' ?></td>
+            <td class="c-actions">
               <div class="row-actions">
                 <a href="edit.php?id=<?= (int)$p['id'] ?>" class="btn btn-secondary btn-sm">Edit</a>
                 <form method="post" action="delete.php" onsubmit="return confirm('Delete &quot;<?= e(addslashes($p['name'])) ?>&quot;? This cannot be undone.');" style="display:inline;">
