@@ -28,7 +28,9 @@ $input = $existing ?: [
     'waProduct'    => '',
 ];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (post_too_large()) {
+    $errors[] = 'That photo is too large for the server, so nothing was saved. Please choose a smaller photo and try again.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
 
     $input = [
@@ -75,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $hasNewImage = isset($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE;
     if ($hasNewImage && $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
-        $errors[] = 'There was a problem uploading the photo. Please try again.';
+        $errors[] = upload_error_message($_FILES['image']['error']);
         $hasNewImage = false;
     }
     $shouldRemove = !$hasNewImage && !empty($_POST['removeImage']);
@@ -185,8 +187,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="checkbox" name="removeImage" value="1" style="width:auto;"> Remove current photo
               </label>
             <?php endif; ?>
-            <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp">
-            <div class="hint">JPG, PNG, or WEBP, max 4MB. Uploading a new photo replaces the current one.</div>
+            <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp">
+            <div class="hint" id="imageHint">JPG, PNG, or WEBP, max 15MB. Large phone photos are shrunk automatically before upload. Uploading a new photo replaces the current one.</div>
+            <img id="imagePreview" alt="" style="display:none; margin-top:0.5rem; width:160px; height:120px; object-fit:contain; border-radius:8px; border:1px solid var(--border); background:#fff;">
           </div>
 
           <div>
@@ -252,6 +255,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (categoryLabelField.value === '' || known.indexOf(categoryLabelField.value) !== -1) {
           categoryLabelField.value = categoryLabels[categorySelect.value] || '';
         }
+      });
+
+      // Shrink photos in the browser before upload. Phone photos are often
+      // 3-10MB; resized to max 1600px JPEG they come out ~150-400KB, upload
+      // fast on mobile data, and load fast on the storefront.
+      var MAX_DIM = 1600;
+      var MAX_BYTES = <?= (int)PRODUCT_IMAGE_MAX_BYTES ?>;
+      var fileInput = document.getElementById('image');
+      var hint = document.getElementById('imageHint');
+      var preview = document.getElementById('imagePreview');
+      var submitBtn = document.querySelector('#productForm button[type="submit"]');
+      var originalHint = hint.textContent;
+
+      function size(bytes) { return bytes > 1048576 ? (bytes / 1048576).toFixed(1) + 'MB' : Math.round(bytes / 1024) + 'KB'; }
+      function setHint(text, isError) { hint.textContent = text; hint.style.color = isError ? '#c0392b' : ''; }
+      function rejectTooLarge(bytes) {
+        fileInput.value = '';
+        preview.style.display = 'none';
+        submitBtn.disabled = false;
+        setHint('Photo is too large (' + size(bytes) + '). Maximum is ' + size(MAX_BYTES) + '. Please choose a smaller photo.', true);
+      }
+
+      // Hard stop: never submit the form with a photo over the limit.
+      document.getElementById('productForm').addEventListener('submit', function (e) {
+        var f = fileInput.files && fileInput.files[0];
+        if (f && f.size > MAX_BYTES) {
+          e.preventDefault();
+          rejectTooLarge(f.size);
+          fileInput.scrollIntoView({ block: 'center' });
+        }
+      });
+
+      fileInput.addEventListener('change', function () {
+        var file = fileInput.files && fileInput.files[0];
+        preview.style.display = 'none';
+        setHint(originalHint);
+        if (!file) return;
+
+        var url = URL.createObjectURL(file);
+        var img = new Image();
+        submitBtn.disabled = true;
+        setHint('Preparing photo...');
+
+        img.onload = function () {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          var scale = Math.min(1, MAX_DIM / Math.max(w, h));
+          var small = scale === 1 && file.size <= 1048576 && /^image\/(jpeg|png|webp)$/.test(file.type);
+          if (small || typeof DataTransfer === 'undefined') {
+            if (file.size > MAX_BYTES) { URL.revokeObjectURL(url); rejectTooLarge(file.size); return; }
+            preview.src = url; preview.style.display = 'block';
+            setHint('Ready: ' + file.name + ' (' + size(file.size) + '). Click "' + submitBtn.textContent + '" to save.');
+            submitBtn.disabled = false;
+            return;
+          }
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.round(w * scale);
+          canvas.height = Math.round(h * scale);
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(function (blob) {
+            URL.revokeObjectURL(url);
+            submitBtn.disabled = false;
+            if (!blob) { setHint(originalHint); return; }
+            var name = (file.name.replace(/\.[^.]+$/, '') || 'photo') + '.jpg';
+            var resized = new File([blob], name, { type: 'image/jpeg' });
+            if (resized.size > MAX_BYTES) { rejectTooLarge(resized.size); return; }
+            var dt = new DataTransfer();
+            dt.items.add(resized);
+            fileInput.files = dt.files;
+            preview.src = URL.createObjectURL(resized); preview.style.display = 'block';
+            setHint('Ready: photo shrunk from ' + size(file.size) + ' to ' + size(resized.size) + '. Click "' + submitBtn.textContent + '" to save.');
+          }, 'image/jpeg', 0.85);
+        };
+        img.onerror = function () {
+          URL.revokeObjectURL(url);
+          submitBtn.disabled = false;
+          fileInput.value = '';
+          setHint('This photo format can\'t be used (e.g. iPhone HEIC). Please choose a JPG or PNG photo.', true);
+        };
+        img.src = url;
       });
     })();
   </script>

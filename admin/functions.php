@@ -3,7 +3,7 @@ define('PRODUCTS_FILE', __DIR__ . '/../products.json');
 define('CREDENTIALS_FILE', __DIR__ . '/credentials.json');
 define('PRODUCT_IMAGES_DIR', __DIR__ . '/../images/products/');
 define('PRODUCT_IMAGES_URL', 'images/products/');
-define('PRODUCT_IMAGE_MAX_BYTES', 4 * 1024 * 1024);
+define('PRODUCT_IMAGE_MAX_BYTES', 15 * 1024 * 1024);
 
 $GLOBALS['DEFAULT_CATEGORIES'] = [
     'toner'      => 'Toner Cartridges',
@@ -45,25 +45,70 @@ function save_data(array $categories, array $products) {
 // place as images/products/{id}.{ext}. Returns ['ok' => true, 'path' => ...]
 // on success, or ['ok' => false, 'error' => ...] on failure.
 function save_product_image($id, array $file, $oldImage = '') {
-    $allowed = ['jpg' => 'jpg', 'jpeg' => 'jpg', 'png' => 'png', 'webp' => 'webp'];
-    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    if (!isset($allowed[$ext])) {
-        return ['ok' => false, 'error' => 'Photo must be a JPG, PNG, or WEBP file.'];
+    // Detect the real image type from the file contents rather than trusting
+    // the extension (phones often send odd names like "IMG_1234" or ".JPEG").
+    $byMime = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+    $info = @getimagesize($file['tmp_name']);
+    $mime = $info['mime'] ?? '';
+    if (!isset($byMime[$mime])) {
+        return ['ok' => false, 'error' => 'Photo must be a JPG, PNG, or WEBP image. (iPhone HEIC photos are not supported - change the camera setting to "Most Compatible" or send the photo as JPG.)'];
     }
     if ($file['size'] > PRODUCT_IMAGE_MAX_BYTES) {
-        return ['ok' => false, 'error' => 'Photo is too large (max 4MB).'];
+        return ['ok' => false, 'error' => 'Photo is too large (max 15MB), so the product was NOT saved. Please choose a smaller photo.'];
     }
+    $ext = $byMime[$mime];
     if (!is_dir(PRODUCT_IMAGES_DIR) && !mkdir(PRODUCT_IMAGES_DIR, 0755, true)) {
         return ['ok' => false, 'error' => 'Could not create the images/products folder.'];
     }
-    $filename = $id . '.' . $allowed[$ext];
-    if (!move_uploaded_file($file['tmp_name'], PRODUCT_IMAGES_DIR . $filename)) {
-        return ['ok' => false, 'error' => 'Could not save the uploaded photo.'];
+
+    // Shrink on the server too, in case the browser didn't (old browser,
+    // direct upload). Falls back to storing the original if GD is missing
+    // or the image can't be processed.
+    $shrunk = shrink_product_image($file['tmp_name'], $mime, (int)$info[0], (int)$info[1], (int)$file['size']);
+    if ($shrunk !== null) {
+        $filename = $id . '.jpg';
+        if (file_put_contents(PRODUCT_IMAGES_DIR . $filename, $shrunk) === false) {
+            return ['ok' => false, 'error' => 'Could not save the uploaded photo.'];
+        }
+    } else {
+        $filename = $id . '.' . $ext;
+        if (!move_uploaded_file($file['tmp_name'], PRODUCT_IMAGES_DIR . $filename)) {
+            return ['ok' => false, 'error' => 'Could not save the uploaded photo.'];
+        }
     }
     if ($oldImage !== '' && $oldImage !== PRODUCT_IMAGES_URL . $filename) {
         delete_product_image_file($oldImage);
     }
     return ['ok' => true, 'path' => PRODUCT_IMAGES_URL . $filename];
+}
+
+// Returns resized JPEG bytes (max 1600px, quality 85) when the photo is larger
+// than needed, or null when it's already small or can't be processed.
+function shrink_product_image($path, $mime, $w, $h, $bytes) {
+    $maxDim = 1600;
+    if ($w <= 0 || $h <= 0) return null;
+    if (max($w, $h) <= $maxDim && $bytes <= 1024 * 1024) return null;
+    if (!function_exists('imagecreatetruecolor')) return null;
+
+    $loaders = ['image/jpeg' => 'imagecreatefromjpeg', 'image/png' => 'imagecreatefrompng', 'image/webp' => 'imagecreatefromwebp'];
+    $load = $loaders[$mime] ?? null;
+    if (!$load || !function_exists($load)) return null;
+    $src = @$load($path);
+    if (!$src) return null;
+
+    $scale = min(1, $maxDim / max($w, $h));
+    $nw = max(1, (int)round($w * $scale));
+    $nh = max(1, (int)round($h * $scale));
+    $dst = imagecreatetruecolor($nw, $nh);
+    imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255)); // white behind transparent PNGs
+    imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+    imagedestroy($src);
+
+    ob_start();
+    $ok = imagejpeg($dst, null, 85);
+    $data = ob_get_clean();
+    imagedestroy($dst);
+    return ($ok && $data !== '' && strlen($data) < $bytes) ? $data : null;
 }
 
 function delete_product_image_file($imagePath) {
@@ -132,6 +177,31 @@ function csrf_token() {
 
 function csrf_field() {
     return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
+}
+
+// When a request body is bigger than PHP's post_max_size, PHP silently drops
+// the whole form ($_POST and $_FILES are empty). Detect that so we can show a
+// clear "photo too large" message instead of a confusing CSRF failure.
+function post_too_large() {
+    return $_SERVER['REQUEST_METHOD'] === 'POST'
+        && empty($_POST) && empty($_FILES)
+        && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0;
+}
+
+function upload_error_message($code) {
+    switch ($code) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'That photo is too large for the server. Please choose a smaller photo.';
+        case UPLOAD_ERR_PARTIAL:
+            return 'The photo only partially uploaded (connection dropped). Please try again.';
+        case UPLOAD_ERR_NO_TMP_DIR:
+        case UPLOAD_ERR_CANT_WRITE:
+        case UPLOAD_ERR_EXTENSION:
+            return 'The server could not store the photo (error code ' . (int)$code . '). Please contact your web developer.';
+        default:
+            return 'There was a problem uploading the photo. Please try again.';
+    }
 }
 
 function csrf_check() {
